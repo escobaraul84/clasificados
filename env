@@ -1,0 +1,8 @@
+CI_ENVIRONMENT = development
+app.baseURL = 'http://localhost/clasificados/public'
+
+database.default.hostname = localhost
+database.default.database = clasificados
+database.default.username = codeigniter01
+database.default.password = Codeigniter01
+database.default.DBDriver = MySQLi
