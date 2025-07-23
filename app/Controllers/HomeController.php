@@ -19,13 +19,22 @@ class HomeController extends BaseController
                ->where('ads.status', 'active')
                ->orderBy('ads.created_at', 'DESC')
                ->paginate(12);
+        
+        // dentro de index()
+        $notifs = db_connect()
+           ->table('notifications')
+           ->where('user_id', session()->get('user_id') ?? 0)
+           ->where('is_read', 0)
+           ->orderBy('created_at', 'DESC')
+           ->get()->getResultArray();
 
         $data = [
-            'title' => 'Clasificados',
-            'ads'   => $ads,
-            'pager' => $adModel->pager,
+            'title'   => 'Clasificados',
+            'ads'     => $ads,
+            'pager'   => $adModel->pager,
+            'notifs'  => $notifs,   // ← nueva línea
         ];
 
-        return view('home/index', $data);
+        return view('home/index', $data); 
     }
 }

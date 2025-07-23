@@ -37,9 +37,13 @@
             <p><strong>Vendedor:</strong> <?= esc($ad['user_name']) ?></p>
 
             <?php if (session()->get('logged_in')): ?>
-                <button class="btn btn-success">Contactar al vendedor</button>
+                <a href="/ad/contact/<?= $ad['id'] ?>" class="btn btn-success">
+                    Contactar vendedor
+                </a>
             <?php else: ?>
-                <a href="/login" class="btn btn-outline-primary">Inicia sesión para contactar</a>
+                <a href="/login" class="btn btn-outline-primary">
+                    Inicia sesión para contactar vendedor
+                </a>
             <?php endif; ?>
         </div>
     </div>

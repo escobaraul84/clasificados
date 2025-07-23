@@ -20,3 +20,10 @@ $routes->post('/register', 'AuthController::attemptRegister');
 $routes->get('/login', 'AuthController::login');
 $routes->post('/login', 'AuthController::attemptLogin');
 $routes->get('/logout', 'AuthController::logout');
+
+// CONTACTO
+$routes->get('/ad/contact/(:num)', 'AdController::contact/$1');
+$routes->get('/profile/(:num)', 'ProfileController::show/$1');
+
+// NOTIFICACIONES
+$routes->post('/notifications/mark-read', 'AdController::markRead');

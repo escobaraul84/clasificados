@@ -57,3 +57,35 @@ $paths = new Paths();
 require $paths->systemDirectory . '/Boot.php';
 
 exit(Boot::bootWeb($paths));
+
+?>
+/*
+ *---------------------------------------------------------------
+ * CHECK PHP VERSION
+ *---------------------------------------------------------------
+ */
+<script src="https://cdn.onesignal.com/sdks/OneSignalSDK.js" async></script>
+<script>
+    var OneSignal = window.OneSignal || [];
+    OneSignal.push(function() {
+        OneSignal.init({
+            appId: "14de340e-e828-435e-b006-0fe78f275fea",
+            autoRegister: false,
+            notifyButton: {
+                enable: false
+            }
+        });
+        OneSignal.on('subscriptionChange', function (isSubscribed) {
+            console.log("The user's subscription state is now:", isSubscribed);
+        });
+    });
+</script>
+<script>
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js').then(function(registration) {
+            console.log('Service Worker registered with scope:', registration.scope);
+        }).catch(function(error) {
+            console.log('Service Worker registration failed:', error);
+        });
+    }
+</script>

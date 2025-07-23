@@ -7,6 +7,14 @@ use App\Models\AdImageModel;
 use CodeIgniter\Controller;
 use CodeIgniter\I18n\Time;
 use Ramsey\Uuid\Uuid;
+use App\Models\UserModel; 
+//use App\Controllers\UserModel;
+
+use CodeIgniter\HTTP\CLIRequest;
+use CodeIgniter\HTTP\IncomingRequest;
+use CodeIgniter\HTTP\RequestInterface;
+use CodeIgniter\HTTP\ResponseInterface;
+use Psr\Log\LoggerInterface;
 
 class AdController extends Controller
 {
@@ -117,5 +125,87 @@ class AdController extends Controller
         }
         return redirect()->to("/ad/$adId-" . url_title($this->request->getPost('title'), '-', true))
                          ->with('success', '¡Anuncio publicado!');
+    }
+    //CAMBIADO DE NOMBRE contact a contactPush para usarlo cuando se implemente push
+    public function contactPush($adId)
+    {
+        $adModel = new AdModel();
+        $ad = $adModel->find($adId);
+
+        if (!$ad) {
+            return redirect()->to('/')->with('error', 'Anuncio no encontrado.');
+        }
+
+        $vendedorId = $ad['user_id'];
+        $vendedor = (new UserModel())->find($vendedorId);
+
+        if (!$vendedor) {
+            return redirect()->to('/')->with('error', 'Vendedor no encontrado.');
+        }
+
+        // Enviar notificación push
+        $this->sendPushNotification($vendedor['email'], 'Contacto nuevo', 'Alguien quiere contactarte por tu anuncio ' . $ad['title']);
+
+        return redirect()->to("/ad/$adId-" . url_title($ad['title'], '-', true))
+                         ->with('success', '¡Mensaje enviado!');
+    }
+
+    private function sendPushNotification($email, $title, $message)
+    {
+        $apiKey = 'jkai4tn22exmvscomqud77eix';
+        $appId = '"14de340e-e828-435e-b006-0fe78f275fea"';
+
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, "https://onesignal.com/api/v1/notifications");
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+            'Content-Type: application/json; charset=utf-8',
+            'Authorization: Basic ' . $apiKey
+        ));
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(array(
+            'app_id' => $appId,
+            'contents' => array('en' => $message),
+            'headings' => array('en' => $title),
+            'include_external_user_ids' => array($email)
+        )));
+
+        $response = curl_exec($ch);
+        curl_close($ch);
+
+        return $response;
+    }
+    public function contact($adId)
+    {
+        $adModel = new AdModel();
+        $ad = $adModel->find($adId);
+
+        if (!$ad) {
+            return redirect()->to('/')->with('error', 'Anuncio no encontrado');
+        }
+
+        // Guardar notificación
+        $db = \Config\Database::connect();
+        $db->table('notifications')->insert([
+            'user_id'    => $ad['user_id'],
+            'buyer_id'   => session()->get('user_id'),
+            'ad_id'      => $adId,
+            'message'    => 'Alguien quiere contactarte por tu anuncio: ' . $ad['title'],
+            'created_at' => Time::now()->toDateTimeString()
+        ]);
+
+        // Redirigir al perfil
+        return redirect()->to("/profile/{$ad['user_id']}")
+                     ->with('success', 'Ahora puedes contactar al vendedor');
+    }
+    public function markRead()
+    {
+        if (!session()->get('logged_in')) return $this->response->setJSON(['ok' => false]);
+
+        db_connect()->table('notifications')
+            ->where('user_id', session('user_id'))
+            ->where('is_read', 0)
+            ->update(['is_read' => 1]);
+        return $this->response->setJSON(['ok' => true]);
     }
 }
