@@ -2,12 +2,13 @@
 $notifs = $notifs ?? [];
 $count  = count($notifs);
 ?>
+<!-- shared/notifications_dropdown.php -->
 <li class="nav-item dropdown">
     <a class="nav-link dropdown-toggle position-relative" href="#" id="notifDropdown" role="button"
        data-bs-toggle="dropdown" aria-expanded="false"
        onclick="markRead()">
         <i class="fas fa-bell"></i>
-        <?php if ($count): ?>
+        <?php if (!empty($count) && $count > 0): ?>
             <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger pulse">
                 <?= $count ?>
             </span>

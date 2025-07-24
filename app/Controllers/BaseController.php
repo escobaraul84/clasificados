@@ -55,4 +55,19 @@ abstract class BaseController extends Controller
 
         // E.g.: $this->session = service('session');
     }
+    protected function loadWithNotifications(string $view, array $data = [])
+    {
+        $notifs = [];
+        if (session()->get('logged_in')) {
+            $notifs = db_connect()
+                ->table('notifications')
+                ->where('user_id', session('user_id'))
+                ->where('is_read', 0)
+                ->orderBy('created_at', 'DESC')
+                ->get()->getResultArray();
+        }
+
+        $data['notifs'] = $notifs;
+        return view($view, $data);
+    }
 }
