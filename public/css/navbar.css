@@ -1,0 +1,21 @@
+/* navbar.css */
+.navbar-search { max-width: 420px; width: 100%; }
+@media (min-width: 992px) { .navbar-search { max-width: 520px; } }
+.navbar-brand {
+    font-weight: 700;
+}
+
+.navbar-search {
+    width: 100%;
+    max-width: 420px;
+}
+
+@media (min-width: 992px) {
+    .navbar-search {
+        max-width: 520px;
+    }
+}
+
+.bell-icon {
+    font-size: 1.15rem;
+}

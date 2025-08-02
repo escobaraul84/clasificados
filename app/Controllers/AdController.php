@@ -16,9 +16,14 @@ use CodeIgniter\HTTP\RequestInterface;
 use CodeIgniter\HTTP\ResponseInterface;
 use Psr\Log\LoggerInterface;
 
-class AdController extends Controller
+class AdController extends BaseController
 {
+    protected AdModel $model;
     protected $helpers = ['form', 'url', 'text'];
+    public function __construct()
+    {
+        $this->model = new AdModel();
+    }
 
     // Listado de anuncios (público)
     public function index()
@@ -27,6 +32,7 @@ class AdController extends Controller
         $ads = $adModel->select('ads.*, users.full_name as user_name')
                        ->join('users', 'users.id = ads.user_id')
                        ->where('ads.status', 'active')
+                       ->where('ads.deleted_at', null)
                        ->orderBy('ads.created_at', 'DESC')
                        ->paginate(12);
 
@@ -45,6 +51,7 @@ class AdController extends Controller
         $ad = $adModel->select('ads.*, users.full_name as user_name')
                       ->join('users', 'users.id = ads.user_id')
                       ->where('ads.id', $id)
+                      ->where('ads.deleted_at', null)
                       ->where('ads.status', 'active')
                       ->first();
 
@@ -207,5 +214,110 @@ class AdController extends Controller
             ->where('is_read', 0)
             ->update(['is_read' => 1]);
         return $this->response->setJSON(['ok' => true]);
+    }
+    public function myAds()
+    {
+        
+        $ads = $this->model
+                ->select('ads.*,
+                        (SELECT url 
+                        FROM ad_images 
+                        WHERE ad_images.ad_id = ads.id 
+                        ORDER BY is_primary DESC, sort_order ASC 
+                        LIMIT 1) AS image_url')
+                ->where('user_id', session('user_id'))
+                ->orderBy('created_at', 'DESC')
+                ->findAll();
+
+        return $this->loadWithNotifications('ad/my_ads', ['ads' => $ads]);
+    }
+    public function edit(int $id)
+    {
+        $ad = $this->model->where('user_id', session('user_id'))->find($id);
+        if (!$ad) return redirect()->to('/mis-anuncios')->with('error', 'Anuncio no encontrado');
+
+        return $this->loadWithNotifications('ad/edit', ['ad' => $ad]);
+    }
+
+    public function update(int $id)
+    {
+        $ad = $this->model->where('user_id', session('user_id'))->find($id);
+        if (!$ad) return redirect()->back()->with('error', 'Anuncio no encontrado');
+
+        $rules = [
+            'title'   => 'required|max_length[150]',
+            'price'   => 'permit_empty|decimal',
+            'status'  => 'in_list[draft,active,paused,sold]'
+        ];
+
+        if (!$this->validate($rules)) return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
+
+        $this->model->update($id, [
+            'title'  => $this->request->getPost('title'),
+            'price'  => $this->request->getPost('price'),
+            'status' => $this->request->getPost('status'),
+        ]);
+
+        return redirect()->to('/mis-anuncios')->with('success', 'Anuncio actualizado');
+    }
+
+    public function delete(int $id)
+    {
+        // 1) Verificar que el anuncio existe y es del usuario
+        $exists = db_connect()
+            ->table('ads')
+            ->where('id', $id)
+            ->where('user_id', session('user_id'))
+            ->countAllResults();
+
+        if (!$exists) {
+            return redirect()->to('/mis-anuncios')->with('error', 'Anuncio no encontrado');
+        }
+
+        // 2) Soft-delete sin tocar el modelo
+        db_connect()
+            ->table('ads')
+            ->where('id', $id)
+            ->update(['deleted_at' => date('Y-m-d H:i:s')]);
+
+        return redirect()->to('/mis-anuncios')->with('success', 'Anuncio borrado');
+    }
+
+    public function toggleStatus(int $id)
+    {
+        $ad = $this->model->where('user_id', session('user_id'))->find($id);
+        if (!$ad) return $this->response->setJSON(['error' => 'No autorizado']);
+
+        $newStatus = $ad['status'] === 'active' ? 'paused' : 'active';
+        $this->model->update($id, ['status' => $newStatus]);
+
+        return $this->response->setJSON(['status' => $newStatus]);
+    }
+    public function markSold(int $id)
+    {
+        $ad = $this->model->withDeleted(true)
+                        ->where('id', $id)
+                        ->where('user_id', session('user_id'))
+                        ->first();
+
+        if (!$ad) {
+            return redirect()->to('/mis-anuncios')->with('error', 'Anuncio no encontrado');
+        }
+
+        $this->model->update($id, ['status' => 'sold']);
+        return redirect()->to('/mis-anuncios')->with('success', 'Anuncio marcado como vendido');
+    }
+    public function pixel(int $id)
+    {
+        // Incrementar el contador sin cargar el modelo
+        db_connect()
+            ->table('ads')
+            ->where('id', $id)
+            ->increment('view_count');
+
+        // Devolver un GIF transparente de 1×1
+        return $this->response
+            ->setHeader('Content-Type', 'image/gif')
+            ->setBody(base64_decode('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'));
     }
 }
